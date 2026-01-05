@@ -1,0 +1,8 @@
+[package]
+name = "breaking_password_of_a_zip_file"
+version = "0.2.0"
+edition = "2024"
+
+[dependencies]
+indicatif = "0.18.3"
+zip = "7.0.0"
