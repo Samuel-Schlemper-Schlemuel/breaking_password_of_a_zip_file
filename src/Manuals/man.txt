@@ -1,0 +1,48 @@
+NAME
+	breaking_password_of_a_zip_file \- A tool for cracking the password of a
+	protected zip file
+
+SYNOPSIS
+	./breaking_password_of_a_zip_file --path-to-archive <PATH_TO_ARCHIVE>
+	[COMMAND]
+
+DESCRIPTION
+	This project features more than one method for cracking zip file
+	passwords. Currently, 3 methods are supported: the first is a simple
+	brute-force cracker through the creation of anagrams using several
+	user-defined letters; the second is via a dictionary attack, where the
+	tested passwords must be in a .txt file with each entry separated by a
+	newline; the third method combines the two previous approaches—besides
+	testing each password individually, it also tests possible anagrams
+	formed by those passwords.
+
+OPTIONS
+	Mandatorily, begin by calling --path_to_archive flag regardless of the
+	command used. This specifies the path to the encrypted file, either from
+	the current folder or from the system root. If omitted, the program will
+	terminate with an error.
+
+	anagrams
+		The "anagrams" command must be called after specifying the path
+		to the encrypted file.
+
+		Optionally, call --min_leters_quantity, which is the minimum
+		number of letters used in the anagram. It must be an integer
+		greater than zero; if omitted, it defaults to 1.
+
+		Optionally, call --max_letters_quantity, which is the maximum
+		number of letters used in the anagram. It must be an integer and
+		also equal to or greater than --min_leters_quantity; if omitted,
+		it will be equal to --min_leters_quantity.
+
+		Optionally, call --letters, which specifies the letters that will
+		be used to construct the anagrams. If omitted, it defaults to
+		"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+
+		Example: ./breaking_password_of_a_zip_file --path_to_archive
+		"/home/name/my archive.zip" anagrams --min_letters_quantity 2
+		--max_letters_quantity 6 --letters "abcdew"
+
+	manual
+		As an exception, you don't need to call --path_to_archive when
+		calling man, because that option only shows this mensage.

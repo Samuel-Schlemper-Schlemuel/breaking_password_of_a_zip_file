@@ -1,8 +1,18 @@
 [package]
 name = "breaking_password_of_a_zip_file"
-version = "0.2.0"
+version = "1.0.0"
+authors = ["Samuel Schlemper <samuelschlemper2006@gmail.com>"]
+license = "MIT"
+description = "A tool to break a password of a zip file"
+readme = "README.md"
+homepage = "https://github.com/Samuel-Schlemper-Schlemuel/breaking_password_of_a_zip_file"
+repository = "https://github.com/Samuel-Schlemper-Schlemuel/breaking_password_of_a_zip_file"
+keywords = ["cli", "password", "break", "found", "zip"]
+categories = ["command-line-utilities"]
 edition = "2024"
+build = false
 
 [dependencies]
+clap = { version = "4.5.54", features = ["derive"] }
 indicatif = "0.18.3"
 zip = "7.0.0"

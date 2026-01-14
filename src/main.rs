@@ -1,18 +1,58 @@
-use std::env;
 use std::fs::File;
-use std::io::Read;
+use std::io::{Read, BufReader};
 use zip::read::ZipArchive;
 use indicatif::ProgressBar;
+use clap::{Parser, Subcommand};
 
-fn brute_force_break(path: &str, letters: &str, zip_archive: &mut ZipArchive<File>,
-                     password_size: usize, initial_string: &mut String, 
+/// A tool to break a password of a zip file
+#[derive(Parser)]
+pub struct Cli {
+	/// Path to the protect zipped archive
+	#[arg(short, long)]
+	path_to_archive: Option<String>,
+
+	#[command(subcommand)]
+	command: Option<Commands>,
+}
+
+#[derive(Subcommand)]
+enum Commands {
+	/// Use the anagrams method
+	Anagrams {
+		/// Minimum number of letters in the password
+		#[arg(short='i', long, default_value_t = 1)]
+		min_letters_quantity: u32,
+
+		/// Maximum number of letters in the password [default: equal to min_letters_quantity]
+		#[arg(short='x', long)]
+		max_letters_quantity: Option<u32>,
+
+		/// Letters to try in the passwords ("abcABC")
+		#[arg(short, long, default_value =
+						   "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")]
+		letters: String,
+	},
+	/// Use the dictionary method
+	Dictionary {
+		text: String,
+	},
+	/// Use the anagram dictionary method (more info in manual)
+	AnagramDictionary {
+		text: String
+	},
+	/// See the Manual
+	Manual{},
+}
+
+fn anagrams(path: &str, letters: &str, zip_archive: &mut ZipArchive<File>,
+                     password_size: usize, initial_string: &mut String,
                      progress_bar: &ProgressBar) -> bool {
     for i in 0..letters.chars().count() {
         let mut test_password = format!("{}{}", initial_string, letters.chars().nth(i)
                                                                 .expect("Failed in get character")
                                                                 .to_string());
         if test_password.chars().count() < password_size {
-            if brute_force_break(path, letters, zip_archive, password_size, 
+            if anagrams(path, letters, zip_archive, password_size,
                                  &mut test_password, progress_bar){
                 return true
             }
@@ -38,74 +78,87 @@ fn brute_force_break(path: &str, letters: &str, zip_archive: &mut ZipArchive<Fil
     return false
 }
 
+/*fn test_zip_archive(zip_path: &String) -> String {
+	*zip_path = *zip_path.expect("Please, write a path to the zip encripted file");
+
+	let mut zip_archive = match File::open(zip_path) {
+		Ok(file) => ZipArchive::new(file).expect("Failed to open zip archive"),
+		Err(e) => {
+			eprintln!("Error opening zip file: {}", e);
+			"Error";
+		}
+	};
+
+	return zip_archive
+}*/
+
 fn main() {
-    println!("Use: ./bin min_letters_quantity max_letters_quantity letters path_to_archive");
-    println!("Use: ./bin --help for more details");
-    println!("Example: ./bin 1 8 \"abcdew\" \"/home/name/my archive.zip\"");
-    println!("\n======================================================================\n");
+	let args = Cli::parse();
 
-    let args: Vec<String> = env::args().collect();
+	match &args.command {
+		Some(Commands::Anagrams {min_letters_quantity, max_letters_quantity, letters}) => {
+			let path_to_archive = args.path_to_archive.expect("Please, write a path to the zip \
+															  encripted file");
 
-    if &args[1] == "--help" {
-        println!("
-It's necessary use 4 objects when calling this function (unless you are calling with the flag --help).
-The first is min_leters_quantity, which means it's the min quantity of letters in the password.
-The second is max_letters_quantity, which means it's the max quatity of letters in the password.
-The third is letters, which means it's the letters used to build the password.
-The fourth is path_to_archive, which means it's the path to the encripted zip archive.
+			let mut zip_archive = match File::open(&path_to_archive) {
+				Ok(file) => ZipArchive::new(file).expect("Failed to open zip archive"),
+				Err(e) => {
+					eprintln!("Error opening zip file: {}", e);
+					return;
+				}
+			};
 
-Note that the min_letters_quantity must to be at least 1 and the max_letters_quantity must to be 
-equal to or greater than min_letters_quantity.");
-        return
-    } else {
-        let min_letters_quantity_on_password = args[1].parse()
-                                                      .expect("Must to be a natural number");
-        let max_letters_quantity_on_password = args[2].parse()
-                                                      .expect("Must to be a natural number");
+			let max_letters_quantity: &u32 = &max_letters_quantity
+											.unwrap_or(*min_letters_quantity);
 
-        if min_letters_quantity_on_password < 1 {
-            println!("min_letters_quantity must to be at least 1");
-            return
-        } else if min_letters_quantity_on_password > max_letters_quantity_on_password {
-            println!("max_letters_quantity must to be greater than min_letters_quantity");
-            return
-        }
+			if *min_letters_quantity < 1 {
+				println!("min_letters_quantity must to be at least 1");
+				return
+			} else if min_letters_quantity > max_letters_quantity {
+				println!("max_letters_quantity must to be greater than min_letters_quantity");
+				return
+			}
 
-        let letters = &args[3];
-        let path_to_archive = &args[4];
+			let letters_quantity_on_user_string = letters.chars().count();
 
-        let letters_quantity_on_user_string = letters.chars().count();
+			let mut quantity_of_combinations = 0;
+			for q in *min_letters_quantity..(*max_letters_quantity + 1) {
+				quantity_of_combinations += letters_quantity_on_user_string.pow(q);
+			}
 
-        let mut quantity_of_combinations = 0;
-        for q in min_letters_quantity_on_password..(max_letters_quantity_on_password as u32 + 1) {
-            quantity_of_combinations += letters_quantity_on_user_string.pow(q);
-        }
+			println!("Quantity of combintions: {}", quantity_of_combinations);
 
-        println!("Quantity of combintions: {}", quantity_of_combinations);
+			for password_size in *min_letters_quantity..
+						         (*max_letters_quantity + 1) {
 
-        let mut zip_archive = match File::open(path_to_archive) {
-            Ok(file) => ZipArchive::new(file).expect("Failed to open zip archive"),
-            Err(e) => {
-                eprintln!("Error opening zip file: {}", e);
-                return;
-            }
-        };
+				println!("Testing with {} letter(s)", password_size);
+				let progress_bar = ProgressBar
+						          ::new(letters_quantity_on_user_string.pow(password_size) as u64);
 
-        for password_size in min_letters_quantity_on_password..
-                             (max_letters_quantity_on_password + 1) {
-                        
-            println!("Testing with {} letter(s)", password_size);
-            let progress_bar = ProgressBar
-                               ::new(letters_quantity_on_user_string.pow(password_size) as u64);
+				let mut initial_string = String::new();
+				if anagrams(&path_to_archive, &letters, &mut zip_archive,
+						             password_size as usize, &mut initial_string, &progress_bar){
+					return
+				}
+			}
 
-            let mut initial_string = String::new();
-            if brute_force_break(&path_to_archive, &letters, &mut zip_archive, 
-                                 password_size as usize, &mut initial_string, &progress_bar){
-                return
-            }
-        }
-
-        println!("The password wasn't found.");
-        return
-    }
+			println!("The password wasn't found.");
+			return
+		}
+		Some(Commands::Dictionary {text}) => {
+			println!("{}", text);
+		}
+		Some(Commands::AnagramDictionary {text}) => {
+			println!("{}", text)
+		}
+		Some(Commands::Manual {}) => {
+			let file = File::open("src/Manuals/man.txt")
+							.expect("Error in opening the manual file");
+			let mut buf_reader = BufReader::new(file);
+			let mut contents = String::new();
+			let _ = buf_reader.read_to_string(&mut contents);
+			println!("{}", contents);
+		}
+		&_ => println!("Found no option. Use --help if needed."),
+	}
 }

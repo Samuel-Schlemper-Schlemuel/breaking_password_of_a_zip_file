@@ -1,12 +1,14 @@
-## A simple brute force break password in zip encripted files.
+## A tool for cracking the password of a protected zip file
 
-It's necessary use 4 objects when calling this function (unless you are calling with the flag --help).
-The first is min_leters_quantity, which means the min quantity of letters in the password.
-The second is max_letters_quantity, which means the max quatity of letters in the password.
-The third is letters, which means is the of letters used to build the password.
-The fourth is path_to_archive, which means that is the path to the encripted zip archive.
+It's recomended to read the manual (/src/Manuals/man.txt) to understand how to
+use this program.
 
-Note that the min_letters_quantity must to be at least 1 and the max_letters_quantity must to be 
-equal to or greater than min_letters_quantity.
-
-Example: ./bin 1 8 "abcdew" "/home/name/my archive.zip"
+## Description
+This project features more than one method for cracking zip file
+passwords. Currently, 3 methods are be planning for support: the first is a 
+simple brute-force cracker through the creation of anagrams using several
+user-defined letters; the second is via a dictionary attack, where the
+tested passwords must be in a .txt file with each entry separated by a
+newline; the third method combines the two previous approaches—besides
+testing each password individually, it also tests possible anagrams
+formed by those passwords.
