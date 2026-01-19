@@ -9,6 +9,6 @@ passwords. Currently, 3 methods are be planning for support: the first is a
 simple brute-force cracker through the creation of anagrams using several
 user-defined letters; the second is via a dictionary attack, where the
 tested passwords must be in a .txt file with each entry separated by a
-newline; the third method combines the two previous approaches—besides
+newline; the third method combines the two previous approaches: besides
 testing each password individually, it also tests possible anagrams
 formed by those passwords.

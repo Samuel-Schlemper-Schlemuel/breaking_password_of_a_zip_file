@@ -1,5 +1,5 @@
 use std::fs::File;
-use std::io::{Read, BufReader};
+use std::io::{Read, BufReader, BufRead, Seek};
 use zip::read::ZipArchive;
 use indicatif::ProgressBar;
 use clap::{Parser, Subcommand};
@@ -34,7 +34,9 @@ enum Commands {
 	},
 	/// Use the dictionary method
 	Dictionary {
-		text: String,
+		/// Write the path to a txt dictionary
+		#[arg(short='d', long)]
+		path_to_dictionary: String
 	},
 	/// Use the anagram dictionary method (more info in manual)
 	AnagramDictionary {
@@ -78,36 +80,35 @@ fn anagrams(path: &str, letters: &str, zip_archive: &mut ZipArchive<File>,
     return false
 }
 
-/*fn test_zip_archive(zip_path: &String) -> String {
-	*zip_path = *zip_path.expect("Please, write a path to the zip encripted file");
-
-	let mut zip_archive = match File::open(zip_path) {
-		Ok(file) => ZipArchive::new(file).expect("Failed to open zip archive"),
-		Err(e) => {
-			eprintln!("Error opening zip file: {}", e);
-			"Error";
-		}
-	};
-
-	return zip_archive
-}*/
-
 fn main() {
 	let args = Cli::parse();
 
 	match &args.command {
+		Some(Commands::Manual {}) => {
+			let file = File::open("src/Manuals/man.txt")
+							.expect("Error in opening the manual file");
+			let mut buf_reader = BufReader::new(file);
+			let mut contents = String::new();
+			let _ = buf_reader.read_to_string(&mut contents);
+			println!("{}", contents);
+			return
+		}
+		&_ => {}
+	}
+
+	let path_to_archive = args.path_to_archive.expect("Please, write a path to the zip \
+													  encripted file");
+
+	let mut zip_archive = match File::open(&path_to_archive) {
+		Ok(file) => ZipArchive::new(file).expect("Failed to open zip archive"),
+		Err(e) => {
+			eprintln!("Error opening zip file: {}", e);
+			return;
+		}
+	};
+
+	match &args.command {
 		Some(Commands::Anagrams {min_letters_quantity, max_letters_quantity, letters}) => {
-			let path_to_archive = args.path_to_archive.expect("Please, write a path to the zip \
-															  encripted file");
-
-			let mut zip_archive = match File::open(&path_to_archive) {
-				Ok(file) => ZipArchive::new(file).expect("Failed to open zip archive"),
-				Err(e) => {
-					eprintln!("Error opening zip file: {}", e);
-					return;
-				}
-			};
-
 			let max_letters_quantity: &u32 = &max_letters_quantity
 											.unwrap_or(*min_letters_quantity);
 
@@ -133,7 +134,7 @@ fn main() {
 
 				println!("Testing with {} letter(s)", password_size);
 				let progress_bar = ProgressBar
-						          ::new(letters_quantity_on_user_string.pow(password_size) as u64);
+						         ::new(letters_quantity_on_user_string.pow(password_size) as u64);
 
 				let mut initial_string = String::new();
 				if anagrams(&path_to_archive, &letters, &mut zip_archive,
@@ -145,20 +146,44 @@ fn main() {
 			println!("The password wasn't found.");
 			return
 		}
-		Some(Commands::Dictionary {text}) => {
-			println!("{}", text);
+		Some(Commands::Dictionary {path_to_dictionary}) => {
+			let mut dictionary_file = match File::open(&path_to_dictionary) {
+				Ok(file) => file,
+				Err(e) => {
+					eprintln!("Error opening dictionary file: {}", e);
+					return;
+				}
+			};
+
+			let progress_bar = ProgressBar
+							 ::new(BufReader::new(&dictionary_file).lines().count() as u64);
+
+			let _ = dictionary_file.seek(std::io::SeekFrom::Start(0));
+			let dictionary_buf_reader = BufReader::new(dictionary_file);
+
+			for line_reader in dictionary_buf_reader.lines() {
+				progress_bar.inc(1);
+				let line_string = line_reader.expect("error when reading a line");
+
+				match zip_archive.by_index_decrypt(0, line_string.as_bytes()) {
+					Err(..) => {},
+					Ok(mut zip) => {
+						let mut buffer = Vec::with_capacity(zip.size() as usize);
+
+						match zip.read_to_end(&mut buffer) {
+							Err(..) => {},
+							Ok(..) => {
+								println!("The password is: {}", line_string);
+								return
+							}
+						}
+					}
+				}
+			}
 		}
 		Some(Commands::AnagramDictionary {text}) => {
 			println!("{}", text)
 		}
-		Some(Commands::Manual {}) => {
-			let file = File::open("src/Manuals/man.txt")
-							.expect("Error in opening the manual file");
-			let mut buf_reader = BufReader::new(file);
-			let mut contents = String::new();
-			let _ = buf_reader.read_to_string(&mut contents);
-			println!("{}", contents);
-		}
-		&_ => println!("Found no option. Use --help if needed."),
+		&_ => {println!("Found no option. Use --help if needed.")}
 	}
 }
