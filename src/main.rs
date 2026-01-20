@@ -36,48 +36,56 @@ enum Commands {
 	Dictionary {
 		/// Write the path to a txt dictionary
 		#[arg(short='d', long)]
-		path_to_dictionary: String
+		path_to_dictionary: String,
 	},
 	/// Use the anagram dictionary method (more info in manual)
 	AnagramDictionary {
-		text: String
+		/// Write the path to a txt dictionary
+		#[arg(short='d', long)]
+		path_to_dictionary: String,
+
+		/// Write the max words quantity in a password
+		#[arg(short='x', long, default_value_t = 2)]
+		max_words_quantity: u32,
 	},
 	/// See the Manual
 	Manual{},
 }
 
-fn anagrams(path: &str, letters: &str, zip_archive: &mut ZipArchive<File>,
-                     password_size: usize, initial_string: &mut String,
-                     progress_bar: &ProgressBar) -> bool {
-    for i in 0..letters.chars().count() {
-        let mut test_password = format!("{}{}", initial_string, letters.chars().nth(i)
-                                                                .expect("Failed in get character")
-                                                                .to_string());
-        if test_password.chars().count() < password_size {
-            if anagrams(path, letters, zip_archive, password_size,
-                                 &mut test_password, progress_bar){
-                return true
-            }
-        } else {
-            progress_bar.inc(1);
+fn anagrams(path: &str, words: &Vec<String>, zip_archive: &mut ZipArchive<File>,
+			password_size: usize, initial_string: &mut String,
+			progress_bar: &ProgressBar, count: Option<u32>) -> bool {
 
-            match zip_archive.by_index_decrypt(0, test_password.as_bytes()) {
-                Err(..) => {},
-                Ok(mut zip) => {
-                    let mut buffer = Vec::with_capacity(zip.size() as usize);
+	for i in 0..words.len() {
+		let mut count: u32 = count.unwrap_or(0);
+		count += 1;
+		let mut test_password = format!("{}{}", initial_string, words[i]);
 
-                    match zip.read_to_end(&mut buffer) {
-                        Err(..) => {},
-                        Ok(..) => {
-                            println!("The password is: {}", test_password);
-                            return true
-                        }
-                    }
-                }
-            }
-        }
-    }
-    return false
+		if count < password_size as u32 {
+			if anagrams(path, words, zip_archive, password_size,
+						&mut test_password, progress_bar, Some(count)){
+				return true
+			}
+		} else {
+			progress_bar.inc(1);
+
+			match zip_archive.by_index_decrypt(0, test_password.as_bytes()) {
+				Err(..) => {},
+				Ok(mut zip) => {
+					let mut buffer = Vec::with_capacity(zip.size() as usize);
+
+					match zip.read_to_end(&mut buffer) {
+						Err(..) => {},
+						Ok(..) => {
+							println!("The password is: {}", test_password);
+							return true
+						}
+					}
+				}
+			}
+		}
+	}
+	return false
 }
 
 fn main() {
@@ -137,8 +145,15 @@ fn main() {
 						         ::new(letters_quantity_on_user_string.pow(password_size) as u64);
 
 				let mut initial_string = String::new();
-				if anagrams(&path_to_archive, &letters, &mut zip_archive,
-						             password_size as usize, &mut initial_string, &progress_bar){
+				let mut letters_vector_strings: Vec<String> = vec![];
+				let letters_vector_characters: Vec<char> = letters.chars().collect();
+
+				for c in letters_vector_characters {
+					letters_vector_strings.push(c.to_string());
+				}
+
+				if anagrams(&path_to_archive, &letters_vector_strings, &mut zip_archive,
+							password_size as usize, &mut initial_string, &progress_bar, None){
 					return
 				}
 			}
@@ -181,8 +196,43 @@ fn main() {
 				}
 			}
 		}
-		Some(Commands::AnagramDictionary {text}) => {
-			println!("{}", text)
+		Some(Commands::AnagramDictionary {path_to_dictionary, max_words_quantity}) => {
+			let mut dictionary_file = match File::open(&path_to_dictionary) {
+				Ok(file) => file,
+				Err(e) => {
+					eprintln!("Error opening dictionary file: {}", e);
+					return;
+				}
+			};
+
+			let number_of_words = BufReader::new(&dictionary_file).lines().count();
+
+			let _ = dictionary_file.seek(std::io::SeekFrom::Start(0));
+			let mut dictionary_buf_reader = BufReader::new(dictionary_file);
+			let mut dictionary_string = String::new();
+			dictionary_buf_reader.read_to_string(&mut dictionary_string)
+								 .expect("Fail to read dictionary");
+
+			let mut words_vector: Vec<String> = vec![];
+
+			for s in dictionary_string.split(|c| c == "\n".chars().next()
+														.expect("Error when reading words")) {
+				words_vector.push(s.to_string());
+			}
+
+			for password_size in 1..(*max_words_quantity + 1) {
+				println!("Testing with {} word(s)", password_size);
+				let progress_bar = ProgressBar::new(number_of_words.pow(password_size) as u64);
+
+				let mut initial_string = String::new();
+
+				if anagrams(&path_to_archive, &words_vector, &mut zip_archive,
+							password_size as usize, &mut initial_string, &progress_bar, None){
+					return
+				}
+			}
+
+			println!("Password not found");
 		}
 		&_ => {println!("Found no option. Use --help if needed.")}
 	}

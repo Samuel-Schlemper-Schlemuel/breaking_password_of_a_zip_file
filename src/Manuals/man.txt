@@ -51,6 +51,45 @@ OPTIONS
 		dictionary file. The diferent passwords need to be separated by
 		line breaks.
 
+	anagram-dictionary
+		This method combines the previous two by using words from a .txt
+		document as the components of an anagram, starting with a single
+		word and increasing up to the set limit. For example, if the
+		document contains the following words:
+
+		password
+		123456
+		qwerty
+
+		And the maximum number of words is set to two (the default), the
+		following tests will be performed:
+
+		password
+		123456
+		qwerty
+		passwordpassword
+		password123456
+		passwordqwerty
+		123456password
+		123456123456
+		123456qwerty
+		qwertypassword
+		qwerty123456
+		qwertyqwerty
+
+		Mandatorily, call --path_to_dictionary, which is the path to the
+		dictionary file. The diferent passwords need to be separated by
+		line breaks.
+
+		Optionally, call --max_words_quantity, which is the maximum
+		number of words used in the anagram. It must be an integer
+		greater than zero; if omitted, it defaults to 2.
+
+		With that said, please note that if you have a file with 60,000
+		different passwords, using this method to combine just two words
+		results in 3,600,000,000 possibilities. Therefore, this method
+		should be used with caution.
+
 	manual
 		As an exception, you don't need to call --path_to_archive when
 		calling man, because that option only shows this mensage.

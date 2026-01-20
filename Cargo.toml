@@ -1,6 +1,6 @@
 [package]
 name = "breaking_password_of_a_zip_file"
-version = "1.0.0"
+version = "1.1.0"
 authors = ["Samuel Schlemper <samuelschlemper2006@gmail.com>"]
 license = "MIT"
 description = "A tool to break a password of a zip file"
